@@ -1,0 +1,160 @@
+import os
+import numpy as np
+import librosa
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.utils import to_categorical
+
+# Define the path to the dataset
+dataset_path = 'ravdess'
+
+# Function to extract MFCC features from an audio file
+def extract_features(file_path):
+    audio, sample_rate = librosa.load(file_path, res_type='kaiser_fast')
+    mfccs = librosa.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=40)
+    mfccs_scaled = np.mean(mfccs.T, axis=0)
+    return mfccs_scaled
+
+# Prepare the dataset
+emotions = {
+    '01': 'neutral',
+    '02': 'calm',
+    '03': 'happy',
+    '04': 'sad',
+    '05': 'angry',
+    '06': 'fearful',
+    '07': 'disgust',
+    '08': 'surprised'
+}
+
+X, y = [], []
+
+for root, _, files in os.walk(dataset_path):
+    for file in files:
+        if file.endswith('.wav'):
+            emotion = emotions[file.split('-')[2]]
+            feature = extract_features(os.path.join(root, file))
+            X.append(feature)
+            y.append(emotion)
+
+X = np.array(X)
+y = np.array(y)
+
+# Encode labels
+from sklearn.preprocessing import LabelEncoder
+
+le = LabelEncoder()
+y = to_categorical(le.fit_transform(y))
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Conv1D, Flatten, Dropout, MaxPooling1D
+
+# Build the model
+model = Sequential([
+    Conv1D(64, kernel_size=2, activation='relu', input_shape=(X_train.shape[1], 1)),
+    MaxPooling1D(pool_size=2),
+    Dropout(0.2),
+    Conv1D(128, kernel_size=2, activation='relu'),
+    MaxPooling1D(pool_size=2),
+    Dropout(0.2),
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dropout(0.2),
+    Dense(y_train.shape[1], activation='softmax')
+])
+
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Reshape the input data for the CNN
+X_train = X_train[..., np.newaxis]
+X_test = X_test[..., np.newaxis]
+# Train the model
+history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_split=0.2)
+# Evaluate the model
+test_loss, test_acc = model.evaluate(X_test, y_test, verbose=2)
+print(f'Test Accuracy: {test_acc:.4f}')
+# Save the model to a file
+model.save('emotion_recognition_model.h5')
+import os
+import numpy as np
+import librosa
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.utils import to_categorical
+from sklearn.preprocessing import LabelEncoder
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Conv1D, Flatten, Dropout, MaxPooling1D
+
+# Define the path to the dataset
+dataset_path = 'ravdess'
+
+# Function to extract MFCC features from an audio file
+def extract_features(file_path):
+    audio, sample_rate = librosa.load(file_path, res_type='kaiser_fast')
+    mfccs = librosa.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=40)
+    mfccs_scaled = np.mean(mfccs.T, axis=0)
+    return mfccs_scaled
+
+# Prepare the dataset
+emotions = {
+    '01': 'neutral',
+    '02': 'calm',
+    '03': 'happy',
+    '04': 'sad',
+    '05': 'angry',
+    '06': 'fearful',
+    '07': 'disgust',
+    '08': 'surprised'
+}
+
+X, y = [], []
+
+for root, _, files in os.walk(dataset_path):
+    for file in files:
+        if file.endswith('.wav'):
+            emotion = emotions[file.split('-')[2]]
+            feature = extract_features(os.path.join(root, file))
+            X.append(feature)
+            y.append(emotion)
+
+X = np.array(X)
+y = np.array(y)
+
+# Encode labels
+le = LabelEncoder()
+y = to_categorical(le.fit_transform(y))
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Build the model
+model = Sequential([
+    Conv1D(64, kernel_size=2, activation='relu', input_shape=(X_train.shape[1], 1)),
+    MaxPooling1D(pool_size=2),
+    Dropout(0.2),
+    Conv1D(128, kernel_size=2, activation='relu'),
+    MaxPooling1D(pool_size=2),
+    Dropout(0.2),
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dropout(0.2),
+    Dense(y_train.shape[1], activation='softmax')
+])
+
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Reshape the input data for the CNN
+X_train = X_train[..., np.newaxis]
+X_test = X_test[..., np.newaxis]
+
+# Train the model
+history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_split=0.2)
+
+# Evaluate the model
+test_loss, test_acc = model.evaluate(X_test, y_test, verbose=2)
+print(f'Test Accuracy: {test_acc:.4f}')
+
+# Save the model to a file
+model.save('emotion_recognition_model.h5')
